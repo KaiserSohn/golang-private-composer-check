@@ -1,0 +1,30 @@
+package http_tools
+
+import (
+	"fmt"
+	"net/url"
+	"project/composer"
+)
+
+func Parse(uriString string) *url.URL {
+	uri, err := url.Parse(uriString)
+	if err != nil {
+		fmt.Println("Bad uri", uriString)
+		return nil
+	}
+	return uri
+}
+
+func GetCredentialsForHost(auth composer.Auth, hostname string) composer.UsernamePasswordCredentials {
+	uri := Parse(hostname)
+
+	return auth.HttpBasic[uri.Host]
+}
+
+func PrepareUrlWithAuth(uriString string, auth composer.Auth) string {
+	uri := Parse(uriString)
+
+	credentials := GetCredentialsForHost(auth, uri.Host)
+
+	return uri.Scheme + "://" + credentials.Username + ":" + credentials.Password + "@" + uri.Host + uri.RequestURI()
+}
