@@ -1,9 +1,9 @@
 package http_tools
 
 import (
+	"PrivateComposerChecker/composer"
 	"fmt"
 	"net/url"
-	"project/composer"
 )
 
 func Parse(uriString string) *url.URL {

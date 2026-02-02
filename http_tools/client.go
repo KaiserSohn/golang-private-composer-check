@@ -1,11 +1,11 @@
 package http_tools
 
 import (
+	"PrivateComposerChecker/composer"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
-	"project/composer"
 )
 
 type Result struct {

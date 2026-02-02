@@ -1,7 +1,7 @@
 package composer
 
 import (
-	"project/json_tools"
+	"PrivateComposerChecker/json_tools"
 )
 
 type ComposerLock struct {

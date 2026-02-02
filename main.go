@@ -1,13 +1,13 @@
 package main
 
 import (
+	"PrivateComposerChecker/composer"
+	"PrivateComposerChecker/html_tools"
+	"PrivateComposerChecker/http_tools"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
-	"project/composer"
-	"project/html_tools"
-	"project/http_tools"
 	"strings"
 )
 

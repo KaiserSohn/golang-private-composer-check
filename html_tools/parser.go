@@ -1,9 +1,9 @@
 package html_tools
 
 import (
+	"PrivateComposerChecker/composer"
+	"PrivateComposerChecker/http_tools"
 	"github.com/pejman-hkh/gdp/gdp"
-	"project/composer"
-	"project/http_tools"
 	"regexp"
 	"sort"
 	"strconv"

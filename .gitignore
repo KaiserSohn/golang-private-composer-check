@@ -3,4 +3,5 @@
 composer.lock
 auth.json
 
-project
+PrivateComposerChecker
+
