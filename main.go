@@ -54,18 +54,16 @@ func showResult(auth composer.Auth, libs []composer.Lib) {
 }
 
 func formatAvailableVersion(versions []html_tools.AvailableVersion) string {
-	var builder strings.Builder
-
 	if len(versions) == 0 {
 		return ""
 	}
 
+	parts := make([]string, 0, len(versions))
 	for _, version := range versions {
-		builder.WriteString(version.Version)
-		builder.WriteString(",")
+		parts = append(parts, version.Version)
 	}
 
-	return "Available versions (" + builder.String() + ")"
+	return "Available versions (" + strings.Join(parts, ", ") + ")"
 }
 
 func parseFlags() (string, string) {

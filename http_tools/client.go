@@ -15,7 +15,12 @@ type Result struct {
 }
 
 func createRequest(auth composer.Auth, url string) *http.Request {
-	request, _ := http.NewRequest(http.MethodGet, url, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		fmt.Printf("Error creating request for %s: %v\n", url, err)
+		return nil
+	}
+
 	credentials := GetCredentialsForHost(auth, url)
 	base64Creds := base64.StdEncoding.EncodeToString([]byte(credentials.Username + ":" + credentials.Password))
 	request.Header.Add("Authorization", "Basic "+base64Creds)
@@ -25,25 +30,30 @@ func createRequest(auth composer.Auth, url string) *http.Request {
 
 func CheckStatus(auth composer.Auth, libs []composer.Lib) []Result {
 	results := make([]Result, len(libs))
+	client := &http.Client{}
 
 	for i, lib := range libs {
 		url := lib.Dist["url"]
 
-		client := &http.Client{}
 		resp, err := client.Do(createRequest(auth, url))
+		if err != nil {
+			fmt.Printf("Error making GET request: %v\n", err)
+			results[i] = Result{URI: url, Status: 0, Lib: lib}
+			continue
+		}
 
 		if len(lib.Source["url"]) > 0 && resp.StatusCode != http.StatusOK {
-			err := resp.Body.Close()
-			if err != nil {
-				return nil
+			if err := resp.Body.Close(); err != nil {
+				fmt.Printf("Error closing response body: %v\n", err)
 			}
 
 			url = lib.Source["url"]
 			resp, err = client.Do(createRequest(auth, url))
-		}
-
-		if err != nil {
-			fmt.Printf("Error making GET request: %v", err)
+			if err != nil {
+				fmt.Printf("Error making GET request: %v\n", err)
+				results[i] = Result{URI: url, Status: 0, Lib: lib}
+				continue
+			}
 		}
 
 		results[i] = Result{
@@ -52,38 +62,36 @@ func CheckStatus(auth composer.Auth, libs []composer.Lib) []Result {
 			Lib:    lib,
 		}
 
-		err = resp.Body.Close()
-		if err != nil {
-			return nil
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
 		}
 	}
+
 	return results
 }
 
 func GetHtml(auth composer.Auth, url string) string {
 	client := &http.Client{}
 	resp, err := client.Do(createRequest(auth, url))
-
 	if err != nil {
-		fmt.Printf("Error making GET request: %v", err)
-		return ""
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("Request failed with status: %s", resp.Status)
+		fmt.Printf("Error making GET request: %v\n", err)
 		return ""
 	}
 
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
+		if err := Body.Close(); err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
 		}
 	}(resp.Body)
 
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Request failed with status: %s\n", resp.Status)
+		return ""
+	}
+
 	htmlBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("Error reading response body: %v", err)
+		fmt.Printf("Error reading response body: %v\n", err)
 		return ""
 	}
 

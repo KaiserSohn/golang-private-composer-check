@@ -8,14 +8,14 @@ import (
 
 func Parse(fileLocation string, object any) {
 	file, err := os.ReadFile(fileLocation)
-	if os.IsNotExist(err) {
-		fmt.Print("File ", fileLocation, " not found in directory")
+	if err != nil {
+		fmt.Printf("Error reading %s: %v\n", fileLocation, err)
 		os.Exit(1)
 	}
 
 	err = json.Unmarshal(file, &object)
 	if err != nil {
-		fmt.Print("Error during parsing ", fileLocation)
+		fmt.Printf("Error during parsing %s: %v\n", fileLocation, err)
 		os.Exit(1)
 	}
 }

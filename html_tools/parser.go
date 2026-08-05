@@ -19,6 +19,10 @@ type AvailableVersion struct {
 
 func ParseVersions(auth composer.Auth, lib composer.Lib) []AvailableVersion {
 	parsedUrl := http_tools.Parse(lib.Dist["url"])
+	if parsedUrl == nil {
+		return nil
+	}
+
 	url := parsedUrl.Scheme + "://" + parsedUrl.Host + HtmlPath + lib.Name
 
 	document := gdp.Default(http_tools.GetHtml(auth, url))
@@ -62,11 +66,11 @@ func convertVersionToInteger(requestedVersion string) int {
 	for i, value := range parts {
 		intValue, _ := strconv.Atoi(value)
 		if i == 0 {
-			result += intValue * 10000000
+			result += intValue * 100000000
 		} else if i == 1 {
-			result += intValue * 100
+			result += intValue * 10000
 		} else {
-			result += intValue * 10
+			result += intValue
 		}
 	}
 	return result
