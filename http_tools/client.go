@@ -6,12 +6,23 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
+	"time"
 )
 
 type Result struct {
 	URI    string
 	Status int
 	Lib    composer.Lib
+	Error  error
+}
+
+var httpClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+	},
 }
 
 func createRequest(auth composer.Auth, url string) *http.Request {
@@ -28,51 +39,79 @@ func createRequest(auth composer.Auth, url string) *http.Request {
 	return request
 }
 
-func CheckStatus(auth composer.Auth, libs []composer.Lib) []Result {
+func CheckStatus(auth composer.Auth, libs []composer.Lib, workers int) []Result {
 	results := make([]Result, len(libs))
-	client := &http.Client{}
 
-	for i, lib := range libs {
-		url := lib.Dist["url"]
-
-		resp, err := client.Do(createRequest(auth, url))
-		if err != nil {
-			fmt.Printf("Error making GET request: %v\n", err)
-			results[i] = Result{URI: url, Status: 0, Lib: lib}
-			continue
-		}
-
-		if len(lib.Source["url"]) > 0 && resp.StatusCode != http.StatusOK {
-			if err := resp.Body.Close(); err != nil {
-				fmt.Printf("Error closing response body: %v\n", err)
-			}
-
-			url = lib.Source["url"]
-			resp, err = client.Do(createRequest(auth, url))
-			if err != nil {
-				fmt.Printf("Error making GET request: %v\n", err)
-				results[i] = Result{URI: url, Status: 0, Lib: lib}
-				continue
-			}
-		}
-
-		results[i] = Result{
-			URI:    url,
-			Status: resp.StatusCode,
-			Lib:    lib,
-		}
-
-		if err := resp.Body.Close(); err != nil {
-			fmt.Printf("Error closing response body: %v\n", err)
-		}
+	if workers < 1 {
+		workers = 1
 	}
+
+	jobs := make(chan int)
+	var wg sync.WaitGroup
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range jobs {
+				results[i] = checkLib(auth, libs[i])
+			}
+		}()
+	}
+
+	for i := range libs {
+		jobs <- i
+	}
+	close(jobs)
+	wg.Wait()
 
 	return results
 }
 
+func checkLib(auth composer.Auth, lib composer.Lib) Result {
+	url := lib.Dist["url"]
+
+	if err := ValidateUrl(url); err != nil {
+		return Result{URI: url, Status: 0, Lib: lib, Error: err}
+	}
+
+	resp, err := httpClient.Do(createRequest(auth, url))
+	if err != nil {
+		return Result{URI: url, Status: 0, Lib: lib, Error: fmt.Errorf("GET %s: %w", url, err)}
+	}
+
+	if len(lib.Source["url"]) > 0 && resp.StatusCode != http.StatusOK {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+
+		url = lib.Source["url"]
+
+		if err := ValidateUrl(url); err != nil {
+			return Result{URI: url, Status: 0, Lib: lib, Error: err}
+		}
+
+		resp, err = httpClient.Do(createRequest(auth, url))
+		if err != nil {
+			return Result{URI: url, Status: 0, Lib: lib, Error: fmt.Errorf("GET %s: %w", url, err)}
+		}
+	}
+
+	result := Result{
+		URI:    url,
+		Status: resp.StatusCode,
+		Lib:    lib,
+	}
+
+	if err := resp.Body.Close(); err != nil {
+		fmt.Printf("Error closing response body: %v\n", err)
+	}
+
+	return result
+}
+
 func GetHtml(auth composer.Auth, url string) string {
-	client := &http.Client{}
-	resp, err := client.Do(createRequest(auth, url))
+	resp, err := httpClient.Do(createRequest(auth, url))
 	if err != nil {
 		fmt.Printf("Error making GET request: %v\n", err)
 		return ""

@@ -11,8 +11,15 @@ go build
 ```
 ## Usage
 ```bash  
-./PrivateComposerChecker --lock-file=composer.lock --auth=auth.json
+./PrivateComposerChecker --lock-file=composer.lock --auth=auth.json --workers=10
 ```
+
+### Flags
+| Flag          | Default | Description                  |
+|---------------|---------|------------------------------|
+| `--lock-file` |         | Path to composer.lock        |
+| `--auth`      |         | Path to auth.json            |
+| `--workers`   | `10`    | Number of concurrent workers |
 ## Output
 
 ```
